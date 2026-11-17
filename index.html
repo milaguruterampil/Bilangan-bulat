@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Bilangan Bulat: Edisi Ular Tangga</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Fredoka -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        fredoka: ['Fredoka', 'sans-serif'],
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 2s infinite',
+                        'wiggle': 'wiggle 0.5s ease-in-out infinite',
+                        'pop': 'pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    },
+                    keyframes: {
+                        wiggle: {
+                            '0%, 100%': { transform: 'rotate(-6deg) scale(1.05)' },
+                            '50%': { transform: 'rotate(6deg) scale(1.05)' },
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(0.8)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: radial-gradient(circle at top left, #e0f2fe, #fef3c7, #fce7f3);
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* Custom 3D-like Button Styles */
+        .btn-game {
+            transition: all 0.15s ease;
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+        }
+        .btn-game:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+        }
+        .btn-game:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Board Grid & Tiles */
+        .board-container {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .tile {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 4px;
+            border-radius: 12px;
+            transition: transform 0.2s ease;
+            box-shadow: inset 0 -3px 0 rgba(0,0,0,0.12);
+        }
+
+        /* Pawn Animations */
+        .pawn {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.35);
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: white;
+            z-index: 20;
+        }
+
+        @media (min-width: 640px) {
+            .pawn {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+            }
+        }
+
+        .pawn-p1 {
+            background: linear-gradient(135deg, #ef4444, #b91c1c);
+        }
+
+        .pawn-p2 {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+
+        /* Dice Styles */
+        .dice-box {
+            width: 72px;
+            height: 72px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 0 #cbd5e1, 0 12px 20px rgba(0,0,0,0.15);
+            border: 3px solid #f1f5f9;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 10px;
+            gap: 4px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .dice-box:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #cbd5e1;
+        }
+        .dot {
+            background-color: #1e293b;
+            border-radius: 50%;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.1s;
+        }
+        .dot.active {
+            opacity: 1;
+        }
+        .dot.red-dot {
+            background-color: #ef4444;
+        }
+
+        /* Custom Scrollbar for Leaderboard */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col items-center justify-center p-3 sm:p-6">
+
+    <!-- ==================== HEADER BAR ==================== -->
+    <header class="w-full max-w-4xl flex items-center justify-between mb-4 bg-white/90 backdrop-blur-md px-4 py-3 rounded-2xl shadow-md border-2 border-indigo-100">
+        <div class="flex items-center gap-2 sm:gap-3">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-tr from-indigo-600 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-inner">
+                ±
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
+                    Master Bilangan Bulat
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 font-medium">Edisi Ular Tangga • Matematika SMP</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button id="btn-sound-toggle" onclick="toggleSound()" class="p-2.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-700 transition" title="Suara Aktif/Nonaktif">
+                🔊
+            </button>
+            <button onclick="showScreen('leaderboard')" class="btn-game px-3 py-2 sm:px-4 sm:py-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-xl text-xs sm:text-sm flex items-center gap-1.5">
+                🏆 <span class="hidden sm:inline">Leaderboard</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== 1. START SCREEN ==================== -->
+    <main id="screen-start" class="w-full max-w-lg bg-white/95 backdrop-blur-md rounded-3xl shadow-xl p-6 sm:p-8 border-4 border-indigo-200 animate-pop">
+        <div class="text-center mb-6">
+            <span class="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                Matematika Kelas 7 SMP
+            </span>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-800">Siap Bertanding?</h2>
+            <p class="text-slate-500 text-sm mt-1">Taklukkan papan 25 petak dengan ketepatan berhitung bilangan bulat!</p>
+        </div>
+
+        <form id="start-form" onsubmit="startGame(event)" class="space-y-4">
+            <!-- Pemain 1 -->
+            <div class="bg-red-50 p-4 rounded-2xl border-2 border-red-200">
+                <label class="block text-sm font-bold text-red-700 mb-1 flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full bg-red-600 inline-block border-2 border-white shadow"></span>
+                    Nama Pemain 1 (Merah)
+                </label>
+                <input type="text" id="input-p1" required maxlength="15" placeholder="Contoh: Budi" value="Pemain 1"
+                    class="w-full px-4 py-2.5 rounded-xl border-2 border-red-200 focus:border-red-500 focus:outline-none font-semibold text-slate-700 bg-white">
+            </div>
+
+            <!-- Pemain 2 -->
+            <div class="bg-blue-50 p-4 rounded-2xl border-2 border-blue-200">
+                <label class="block text-sm font-bold text-blue-700 mb-1 flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full bg-blue-600 inline-block border-2 border-white shadow"></span>
+                    Nama Pemain 2 (Biru)
+                </label>
+                <input type="text" id="input-p2" required maxlength="15" placeholder="Contoh: Siti" value="Pemain 2"
+                    class="w-full px-4 py-2.5 rounded-xl border-2 border-blue-200 focus:border-blue-500 focus:outline-none font-semibold text-slate-700 bg-white">
+            </div>
+
+            <!-- Kelas & Sekolah -->
+            <div class="bg-purple-50 p-4 rounded-2xl border-2 border-purple-200">
+                <label class="block text-sm font-bold text-purple-700 mb-1">
+                    🏫 Kelas & Sekolah (Tim)
+                </label>
+                <input type="text" id="input-team" required maxlength="30" placeholder="Contoh: VII-A / SMPN 1 Nusantara"
+                    class="w-full px-4 py-2.5 rounded-xl border-2 border-purple-200 focus:border-purple-500 focus:outline-none font-semibold text-slate-700 bg-white">
+            </div>
+
+            <!-- Aturan Singkat -->
+            <div class="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
+                <p class="font-bold">📜 Aturan Main:</p>
+                <ul class="list-disc list-inside space-y-0.5 text-amber-800">
+                    <li>Kocok dadu & jawab pertanyaan Bilangan Bulat untuk melangkah!</li>
+                    <li>Jawaban <b>Benar</b>: Maju sesuai angka dadu. Jawaban <b>Salah</b>: Diam di tempat.</li>
+                    <li>Kotak <b>⭐ Spesial</b>: Berisi 🪜 Tangga (naik) atau 🐍 Ular (turun).</li>
+                </ul>
+            </div>
+
+            <div class="pt-2 flex flex-col sm:flex-row gap-3">
+                <button type="submit" class="btn-game flex-1 py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold rounded-2xl text-lg shadow-lg">
+                    🚀 Mulai Permainan!
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <!-- ==================== 2. GAME SCREEN ==================== -->
+    <section id="screen-game" class="hidden w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        
+        <!-- Left/Top: Game Board (7 cols on lg) -->
+        <div class="lg:col-span-7 bg-white/95 backdrop-blur-md p-3 sm:p-5 rounded-3xl shadow-xl border-4 border-indigo-200">
+            <div class="flex justify-between items-center mb-3 px-1">
+                <span class="text-xs sm:text-sm font-bold text-indigo-700 bg-indigo-100 px-3 py-1 rounded-full">
+                    🎯 Target: Petak 25 (FINISH)
+                </span>
+                <span id="team-badge" class="text-xs font-semibold text-slate-500 truncate max-w-[180px]">
+                    Tim: -
+                </span>
+            </div>
+
+            <!-- 5x5 Zig-Zag Board -->
+            <div class="board-container bg-slate-100 p-2 sm:p-3 rounded-2xl border-2 border-slate-300 shadow-inner">
+                <!-- SVG Overlay for Ladders and Snakes -->
+                <svg id="board-svg" class="absolute inset-0 w-full h-full pointer-events-none z-10" viewBox="0 0 500 500"></svg>
+                
+                <!-- Grid 5x5 -->
+                <div id="board-grid" class="grid grid-cols-5 grid-rows-5 gap-1.5 sm:gap-2 w-full h-full relative z-0">
+                    <!-- Tiles generated by JS -->
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="mt-3 flex flex-wrap justify-center gap-3 text-xs font-semibold text-slate-600">
+                <span class="flex items-center gap-1 bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg">🪜 Tangga (Naik)</span>
+                <span class="flex items-center gap-1 bg-rose-100 text-rose-800 px-2.5 py-1 rounded-lg">🐍 Ular (Turun)</span>
+                <span class="flex items-center gap-1 bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg">⭐ Kotak Spesial</span>
+            </div>
+        </div>
+
+        <!-- Right/Bottom: Control Panel & Status (5 cols on lg) -->
+        <div class="lg:col-span-5 space-y-4">
+            
+            <!-- Turn Indicator Card -->
+            <div id="turn-card" class="bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-xl border-4 border-red-400 transition-colors duration-300">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Giliran Sekarang</span>
+                    <span id="turn-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                        Pemain 1
+                    </span>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div id="turn-avatar" class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 text-white flex items-center justify-center text-2xl font-bold shadow-md shrink-0">
+                        P1
+                    </div>
+                    <div>
+                        <h3 id="turn-name" class="text-xl sm:text-2xl font-bold text-slate-800 leading-tight">Pemain 1</h3>
+                        <p id="turn-instruction" class="text-xs sm:text-sm text-slate-500 mt-0.5">Klik dadu untuk mengocok angka!</p>
+                    </div>
+                </div>
+
+                <!-- Dice & Roll Button -->
+                <div class="mt-5 pt-4 border-t-2 border-slate-100 flex items-center justify-around gap-4">
+                    <div id="dice" onclick="handleRollDice()" class="dice-box" title="Klik untuk kocok dadu">
+                        <div class="dot" id="d1"></div>
+                        <div class="dot" id="d2"></div>
+                        <div class="dot" id="d3"></div>
+                        <div class="dot" id="d4"></div>
+                        <div class="dot red-dot active" id="d5"></div>
+                        <div class="dot" id="d6"></div>
+                        <div class="dot" id="d7"></div>
+                        <div class="dot" id="d8"></div>
+                        <div class="dot" id="d9"></div>
+                    </div>
+
+                    <button id="btn-roll" onclick="handleRollDice()" class="btn-game flex-1 py-4 px-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-2xl text-base sm:text-lg shadow-md">
+                        🎲 Kocok Dadu
+                    </button>
+                </div>
+            </div>
+
+            <!-- Players Scoreboard / Position Status -->
+            <div class="bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-xl border-4 border-indigo-100 space-y-3">
+                <h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Posisi & Statistik Pemain</h4>
+                
+                <!-- Player 1 Status -->
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-red-50 border-2 border-red-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full pawn-p1 flex items-center justify-center text-white font-bold text-xs shadow">P1</div>
+                        <div>
+                            <p id="stat-p1-name" class="font-bold text-slate-800 text-sm sm:text-base">Pemain 1</p>
+                            <p class="text-xs text-slate-500">Lemparan: <span id="stat-p1-rolls" class="font-bold text-red-600">0</span>x • Benar: <span id="stat-p1-correct" class="font-bold text-emerald-600">0</span></p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">Petak</span>
+                        <span id="stat-p1-pos" class="text-xl font-bold text-red-600">1</span><span class="text-xs text-slate-400">/25</span>
+                    </div>
+                </div>
+
+                <!-- Player 2 Status -->
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-blue-50 border-2 border-blue-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full pawn-p2 flex items-center justify-center text-white font-bold text-xs shadow">P2</div>
+                        <div>
+                            <p id="stat-p2-name" class="font-bold text-slate-800 text-sm sm:text-base">Pemain 2</p>
+                            <p class="text-xs text-slate-500">Lemparan: <span id="stat-p2-rolls" class="font-bold text-blue-600">0</span>x • Benar: <span id="stat-p2-correct" class="font-bold text-emerald-600">0</span></p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">Petak</span>
+                        <span id="stat-p2-pos" class="text-xl font-bold text-blue-600">1</span><span class="text-xs text-slate-400">/25</span>
+                    </div>
+                </div>
+
+                <!-- Action Footer -->
+                <div class="pt-2 flex justify-between items-center">
+                    <button onclick="confirmQuitGame()" class="text-xs font-bold text-rose-500 hover:text-rose-700 underline">
+                        ← Keluar / Reset Game
+                    </button>
+                    <span id="game-log" class="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                        Menunggu lemparan dadu...
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== 3. QUIZ MODAL ==================== -->
+    <div id="modal-quiz" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl border-4 border-indigo-300 overflow-hidden animate-pop">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🧠</span>
+                    <div>
+                        <h3 class="font-bold text-lg leading-tight">Tantangan Bilangan Bulat!</h3>
+                        <p id="quiz-subtitle" class="text-xs text-indigo-100">Jawab benar untuk maju 4 langkah!</p>
+                    </div>
+                </div>
+                <span id="quiz-category" class="px-3 py-1 bg-white/20 rounded-full text-xs font-bold">
+                    Operasi Hitung
+                </span>
+            </div>
+
+            <!-- Question Body -->
+            <div class="p-6">
+                <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 sm:p-5 mb-5">
+                    <p id="quiz-question" class="text-base sm:text-lg font-bold text-slate-800 leading-relaxed">
+                        Hasil dari -15 + 8 - (-12) adalah ...
+                    </p>
+                </div>
+
+                <!-- Multiple Choice Options -->
+                <div id="quiz-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Options injected via JS -->
+                </div>
+
+                <!-- Feedback Banner -->
+                <div id="quiz-feedback" class="hidden mt-5 p-4 rounded-2xl text-center font-bold text-sm sm:text-base animate-pop">
+                    <!-- Feedback text -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 4. CONFIRMATION MODAL (No alert/confirm) ==================== -->
+    <div id="modal-confirm" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl border-4 border-rose-200 p-6 text-center animate-pop">
+            <div class="text-4xl mb-2">⚠️</div>
+            <h3 class="text-xl font-bold text-slate-800">Akhiri Permainan?</h3>
+            <p class="text-sm text-slate-500 mt-1 mb-5">Progres permainan saat ini tidak akan disimpan ke leaderboard.</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="btn-game flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl">
+                    Batal
+                </button>
+                <button onclick="quitGame()" class="btn-game flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl">
+                    Ya, Keluar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 5. GAME OVER SCREEN ==================== -->
+    <section id="screen-gameover" class="hidden w-full max-w-lg bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 sm:p-8 border-4 border-amber-300 text-center animate-pop">
+        <div class="text-6xl mb-3 animate-bounce">🏆</div>
+        <span class="inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+            Permainan Selesai!
+        </span>
+        <h2 id="winner-name" class="text-3xl sm:text-4xl font-bold text-slate-800 mb-1">Pemain 1 Menang!</h2>
+        <p id="winner-team" class="text-sm font-semibold text-purple-600 mb-6">Kelas VII-A • SMPN 1</p>
+
+        <!-- Match Stats -->
+        <div class="bg-slate-50 rounded-2xl p-4 border-2 border-slate-200 mb-6 grid grid-cols-3 gap-2 text-center">
+            <div class="p-2">
+                <span class="text-xs text-slate-400 block">Total Lemparan</span>
+                <span id="go-rolls" class="text-xl font-bold text-indigo-600">12</span>
+            </div>
+            <div class="p-2 border-x border-slate-200">
+                <span class="text-xs text-slate-400 block">Jawaban Benar</span>
+                <span id="go-correct" class="text-xl font-bold text-emerald-600">9</span>
+            </div>
+            <div class="p-2">
+                <span class="text-xs text-slate-400 block">Skor Akhir</span>
+                <span id="go-score" class="text-xl font-bold text-amber-600">850</span>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+            <button onclick="showScreen('leaderboard')" class="btn-game flex-1 py-3.5 px-5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold rounded-2xl">
+                🏆 Lihat Leaderboard
+            </button>
+            <button onclick="resetToStart()" class="btn-game flex-1 py-3.5 px-5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl">
+                🔄 Main Lagi
+            </button>
+        </div>
+    </section>
+
+    <!-- ==================== 6. LEADERBOARD SCREEN ==================== -->
+    <section id="screen-leaderboard" class="hidden w-full max-w-2xl bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-6 sm:p-8 border-4 border-amber-300 animate-pop">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center gap-2">
+                    🏆 Papan Peringkat
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500">Master Bilangan Bulat Terbaik (Semakin sedikit lemparan, semakin tinggi skor!)</p>
+            </div>
+            <button onclick="backFromLeaderboard()" class="btn-game px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-sm">
+                ← Kembali
+            </button>
+        </div>
+
+        <!-- Top 3 Podium -->
+        <div id="leaderboard-podium" class="grid grid-cols-3 gap-2 sm:gap-4 items-end mb-6 pt-4 px-2">
+            <!-- Podium injected via JS -->
+        </div>
+
+        <!-- Full List -->
+        <div class="bg-slate-50 rounded-2xl border-2 border-slate-200 overflow-hidden">
+            <div class="max-h-60 overflow-y-auto divide-y divide-slate-200" id="leaderboard-list">
+                <!-- List rows injected via JS -->
+            </div>
+        </div>
+
+        <div class="mt-4 flex justify-between items-center text-xs text-slate-400">
+            <span>Data tersimpan otomatis di browser ini.</span>
+            <button onclick="clearLeaderboard()" class="text-rose-500 hover:underline font-semibold">Hapus Riwayat Skor</button>
+        </div>
+    </section>
+
+    <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+    <script>
+        /* ==========================================================================
+           1. BANK SOAL BILANGAN BULAT (30 SOAL BERKUALITAS KURIKULUM SMP KELAS 7)
+           ========================================================================== */
+        const QUESTION_BANK = [
+            // Membandingkan & Mengurutkan
+            {
+                category: "Membandingkan",
+                q: "Tanda pertidaksamaan yang tepat untuk membandingkan -18 ... -12 adalah ...",
+                options: ["<", ">", "=", "≥"],
+                answer: 0,
+                explanation: "Pada garis bilangan, -18 terletak di sebelah kiri -12, sehingga -18 < -12."
+            },
+            {
+                category: "Mengurutkan",
+                q: "Urutan bilangan bulat berikut dari yang terkecil hingga terbesar adalah: -5, 3, -9, 0, 2",
+                options: ["-9, -5, 0, 2, 3", "-5, -9, 0, 2, 3", "3, 2, 0, -5, -9", "0, 2, 3, -5, -9"],
+                answer: 0,
+                explanation: "Semakin besar angka negatifnya, semakin kecil nilainya: -9 < -5 < 0 < 2 < 3."
+            },
+            {
+                category: "Garis Bilangan",
+                q: "Bilangan bulat yang terletak 7 satuan di sebelah kiri angka 3 pada garis bilangan adalah ...",
+                options: ["-4", "4", "-10", "10"],
+                answer: 0,
+                explanation: "Ke kiri berarti dikurangi: 3 - 7 = -4."
+            },
+            {
+                category: "Garis Bilangan",
+                q: "Bilangan bulat yang berada di antara -4 dan 1 adalah ...",
+                options: ["-3, -2, -1, 0", "-5, -4, -3, -2", "-3, -2, 0, 1", "-2, -1, 0, 2"],
+                answer: 0,
+                explanation: "Di antara -4 dan 1 terdapat bilangan -3, -2, -1, dan 0."
+            },
+            {
+                category: "Membandingkan",
+                q: "Manakah pernyataan berikut yang BENAR?",
+                options: ["-25 < -19", "-14 > -8", "0 < -5", "-100 > 1"],
+                answer: 0,
+                explanation: "-25 lebih kecil daripada -19 karena posisinya lebih ke kiri pada garis bilangan."
+            },
+
+            // Penjumlahan & Pengurangan
+            {
+                category: "Penjumlahan",
+                q: "Hasil dari -24 + 15 adalah ...",
+                options: ["-9", "9", "-39", "39"],
+                answer: 0,
+                explanation: "-24 + 15 = -(24 - 15) = -9."
+            },
+            {
+                category: "Penjumlahan",
+                q: "Hasil dari -17 + (-23) adalah ...",
+                options: ["-40", "40", "-6", "6"],
+                answer: 0,
+                explanation: "Negatif ditambah negatif hasilnya negatif: -(17 + 23) = -40."
+            },
+            {
+                category: "Pengurangan",
+                q: "Hasil dari 14 - (-19) adalah ...",
+                options: ["33", "-33", "-5", "5"],
+                answer: 0,
+                explanation: "Mengurangi bilangan negatif sama dengan menjumlahkan: 14 + 19 = 33."
+            },
+            {
+                category: "Pengurangan",
+                q: "Hasil dari -28 - (-12) adalah ...",
+                options: ["-16", "16", "-40", "40"],
+                answer: 0,
+                explanation: "-28 - (-12) = -28 + 12 = -16."
+            },
+            {
+                category: "Penjumlahan & Pengurangan",
+                q: "Hasil dari -15 + 8 - (-12) adalah ...",
+                options: ["5", "-5", "-19", "19"],
+                answer: 0,
+                explanation: "-15 + 8 = -7, lalu -7 - (-12) = -7 + 12 = 5."
+            },
+            {
+                category: "Penjumlahan & Pengurangan",
+                q: "Jika n + (-14) = -25, maka nilai n adalah ...",
+                options: ["-11", "11", "-39", "39"],
+                answer: 0,
+                explanation: "n = -25 - (-14) = -25 + 14 = -11."
+            },
+            {
+                category: "Penjumlahan & Pengurangan",
+                q: "Nilai dari 32 - 45 + (-13) adalah ...",
+                options: ["-26", "26", "0", "-13"],
+                answer: 0,
+                explanation: "32 - 45 = -13, kemudian -13 + (-13) = -26."
+            },
+
+            // Perkalian & Pembagian
+            {
+                category: "Perkalian",
+                q: "Hasil dari -8 × 7 adalah ...",
+                options: ["-56", "56", "-15", "15"],
+                answer: 0,
+                explanation: "Negatif dikali positif menghasilkan negatif: -(8 × 7) = -56."
+            },
+            {
+                category: "Perkalian",
+                q: "Hasil dari -12 × (-6) adalah ...",
+                options: ["72", "-72", "-18", "18"],
+                answer: 0,
+                explanation: "Negatif dikali negatif menghasilkan positif: 12 × 6 = 72."
+            },
+            {
+                category: "Pembagian",
+                q: "Hasil dari -96 : 8 adalah ...",
+                options: ["-12", "12", "-14", "14"],
+                answer: 0,
+                explanation: "Negatif dibagi positif menghasilkan negatif: -(96 : 8) = -12."
+            },
+            {
+                category: "Pembagian",
+                q: "Hasil dari -108 : (-9) adalah ...",
+                options: ["12", "-12", "11", "-11"],
+                answer: 0,
+                explanation: "Negatif dibagi negatif menghasilkan positif: 108 : 9 = 12."
+            },
+            {
+                category: "Perkalian & Pembagian",
+                q: "Hasil dari (-4) × 5 × (-3) adalah ...",
+                options: ["60", "-60", "20", "-20"],
+                answer: 0,
+                explanation: "(-4 × 5) = -20, lalu -20 × (-3) = 60."
+            },
+            {
+                category: "Perkalian & Pembagian",
+                q: "Jika -72 : p = 9, maka nilai p adalah ...",
+                options: ["-8", "8", "-9", "9"],
+                answer: 0,
+                explanation: "p = -72 : 9 = -8."
+            },
+
+            // Operasi Hitung Campuran
+            {
+                category: "Operasi Campuran",
+                q: "Hasil dari 15 + (-6) × 4 adalah ...",
+                options: ["-9", "36", "-36", "9"],
+                answer: 0,
+                explanation: "Kerjakan perkalian dulu: (-6) × 4 = -24. Lalu 15 + (-24) = -9."
+            },
+            {
+                category: "Operasi Campuran",
+                q: "Hasil dari (-24) : 3 + (-5) × (-2) adalah ...",
+                options: ["2", "-18", "18", "-2"],
+                answer: 0,
+                explanation: "(-24 : 3) = -8 dan (-5 × -2) = 10. Maka -8 + 10 = 2."
+            },
+            {
+                category: "Operasi Campuran",
+                q: "Nilai dari 40 - (-20) : 5 + (-7) adalah ...",
+                options: ["37", "5", "-19", "43"],
+                answer: 0,
+                explanation: "(-20) : 5 = -4. Lalu 40 - (-4) + (-7) = 40 + 4 - 7 = 37."
+            },
+            {
+                category: "Operasi Campuran",
+                q: "Hasil dari (-18 + 6) : (-3) adalah ...",
+                options: ["4", "-4", "8", "-8"],
+                answer: 0,
+                explanation: "Kerjakan dalam kurung: -18 + 6 = -12. Lalu -12 : (-3) = 4."
+            },
+            {
+                category: "Operasi Campuran",
+                q: "Sifat operasi hitung pada (-5 × 4) × (-3) = -5 × (4 × (-3)) disebut sifat ...",
+                options: ["Asosiatif", "Komutatif", "Distributif", "Identitas"],
+                answer: 0,
+                explanation: "Pengelompokan tanda kurung pada perkalian merupakan sifat Asosiatif."
+            },
+            {
+                category: "Operasi Campuran",
+                q: "Hasil dari -3² + (-2)³ adalah ...",
+                options: ["-17", "1", "-1", "17"],
+                answer: 0,
+                explanation: "-3² = -(3×3) = -9, dan (-2)³ = -8. Jadi -9 + (-8) = -17."
+            },
+
+            // Soal Cerita Aplikasi Bilangan Bulat
+            {
+                category: "Soal Cerita (Suhu)",
+                q: "Suhu di dalam kulkas -4°C. Saat listrik padam, suhu naik 3°C setiap 10 menit. Suhu kulkas setelah 30 menit adalah ...",
+                options: ["5°C", "-13°C", "9°C", "-1°C"],
+                answer: 0,
+                explanation: "30 menit = 3 kali kenaikan (3 × 3°C = 9°C). Suhu akhir = -4 + 9 = 5°C."
+            },
+            {
+                category: "Soal Cerita (Ketinggian)",
+                q: "Seekor lumba-lumba berenang di kedalaman 12 meter di bawah permukaan laut, lalu melompat setinggi 15 meter dari posisinya. Ketinggian lumba-lumba di atas permukaan laut adalah ...",
+                options: ["3 meter", "27 meter", "-3 meter", "15 meter"],
+                answer: 0,
+                explanation: "Posisi awal = -12 m. Melompat naik 15 m: -12 + 15 = +3 meter."
+            },
+            {
+                category: "Soal Cerita (Skor Ujian)",
+                q: "Dalam ujian, jawaban benar skor 4, salah -2, dan tidak dijawab -1. Dari 25 soal, Andi menjawab benar 18 soal dan salah 5 soal. Skor Andi adalah ...",
+                options: ["60", "62", "72", "58"],
+                answer: 0,
+                explanation: "Benar: 18×4=72; Salah: 5×(-2)=-10; Kosong: 2×(-1)=-2. Total = 72 - 10 - 2 = 60."
+            },
+            {
+                category: "Soal Cerita (Suhu)",
+                q: "Suhu kota Seoul -6°C sedangkan suhu kota Jakarta 31°C. Selisih suhu kedua kota tersebut adalah ...",
+                options: ["37°C", "25°C", "-37°C", "-25°C"],
+                answer: 0,
+                explanation: "Selisih = suhu tertinggi - suhu terendah = 31 - (-6) = 31 + 6 = 37°C."
+            },
+            {
+                category: "Soal Cerita (Kapal Selam)",
+                q: "Sebuah kapal selam berada pada kedalaman 120 m di bawah permukaan laut. Kapal naik 45 m, lalu menyelam lagi 30 m. Posisi kapal sekarang adalah ...",
+                options: ["105 m di bawah permukaan laut", "45 m di bawah permukaan laut", "195 m di bawah permukaan laut", "75 m di bawah permukaan laut"],
+                answer: 0,
+                explanation: "-120 + 45 - 30 = -75 - 30 = -105 m (105 m di bawah permukaan laut)."
+            },
+            {
+                category: "Soal Cerita (Lift Gedung)",
+                q: "Rina berada di lantai 2 basement (-2). Ia naik lift sejauh 9 lantai. Di lantai berapakah Rina sekarang?",
+                options: ["Lantai 7", "Lantai 11", "Lantai 6", "Lantai 8"],
+                answer: 0,
+                explanation: "Posisi awal -2, naik 9 lantai: -2 + 9 = 7 (Lantai 7)."
+            }
+        ];
+
+        /* ==========================================================================
+           2. KONFIGURASI PAPAN 5x5 ZIG-ZAG & RUTE ULAR TANGGA
+           ========================================================================== */
+        // Tangga (naik) & Ular (turun)
+        const LADDERS = {
+            3: 11,
+            6: 17,
+            10: 19,
+            14: 22
+        };
+
+        const SNAKES = {
+            13: 4,
+            18: 8,
+            21: 12,
+            24: 15
+        };
+
+        // Warna-warni petak agar ceria dan ramah anak
+        const TILE_COLORS = [
+            "bg-amber-100 border-amber-300 text-amber-900",
+            "bg-sky-100 border-sky-300 text-sky-900",
+            "bg-emerald-100 border-emerald-300 text-emerald-900",
+            "bg-purple-100 border-purple-300 text-purple-900",
+            "bg-pink-100 border-pink-300 text-pink-900"
+        ];
+
+        /* ==========================================================================
+           3. STATE PERMAINAN & AUDIO ENGINE (WEB AUDIO API)
+           ========================================================================== */
+        let gameState = {
+            players: [
+                { id: 1, name: "Pemain 1", pos: 1, rolls: 0, correct: 0, color: "red" },
+                { id: 2, name: "Pemain 2", pos: 1, rolls: 0, correct: 0, color: "blue" }
+            ],
+            team: "",
+            currentTurn: 0, // 0 for P1, 1 for P2
+            isRolling: false,
+            isQuizOpen: false,
+            currentDice: 1,
+            usedQuestions: [],
+            soundEnabled: true,
+            lastScreen: "start"
+        };
+
+        // Web Audio API Context
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleSound() {
+            gameState.soundEnabled = !gameState.soundEnabled;
+            const btn = document.getElementById('btn-sound-toggle');
+            btn.textContent = gameState.soundEnabled ? "🔊" : "🔇";
+            if (gameState.soundEnabled) {
+                initAudio();
+                playSound('step');
+            }
+        }
+
+        function playSound(type) {
+            if (!gameState.soundEnabled) return;
+            try {
+                initAudio();
+                const now = audioCtx.currentTime;
+
+                if (type === 'dice') {
+                    // Suara klik dadu cepat
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300 + Math.random() * 250, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } 
+                else if (type === 'step') {
+                    // Suara pion melangkah (pop)
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(420, now);
+                    osc.frequency.exponentialRampToValueAtTime(680, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                }
+                else if (type === 'correct') {
+                    // Melodi ceria jawaban benar
+                    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.25);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.25);
+                    });
+                }
+                else if (type === 'wrong') {
+                    // Suara jawaban salah (buzzer rendah)
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(130, now + 0.35);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.38);
+                }
+                else if (type === 'ladder') {
+                    // Naik tangga (arpeggio naik cepat)
+                    const notes = [330, 392, 493.88, 587.33, 659.25, 783.99];
+                    notes.forEach((freq, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.06);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.15);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.06);
+                        osc.stop(now + idx * 0.06 + 0.15);
+                    });
+                }
+                else if (type === 'snake') {
+                    // Turun ular (slide turun)
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(520, now);
+                    osc.frequency.exponentialRampToValueAtTime(110, now + 0.55);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                }
+                else if (type === 'win') {
+                    // Fanfare kemenangan
+                    const melody = [
+                        { f: 523.25, t: 0, d: 0.15 },
+                        { f: 523.25, t: 0.16, d: 0.15 },
+                        { f: 523.25, t: 0.32, d: 0.15 },
+                        { f: 659.25, t: 0.48, d: 0.3 },
+                        { f: 587.33, t: 0.80, d: 0.2 },
+                        { f: 659.25, t: 1.02, d: 0.2 },
+                        { f: 783.99, t: 1.24, d: 0.5 }
+                    ];
+                    melody.forEach(n => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(n.f, now + n.t);
+                        gain.gain.setValueAtTime(0.25, now + n.t);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        osc.start(now + n.t);
+                        osc.stop(now + n.t + n.d);
+                    });
+                }
+            } catch (e) {
+                console.warn("Audio error:", e);
+            }
+        }
+
+        /* ==========================================================================
+           4. NAVIGASI LAYAR (SPA NAVIGATION)
+           ========================================================================== */
+        function showScreen(screenName) {
+            const screens = ['start', 'game', 'gameover', 'leaderboard'];
+            
+            // Simpan screen sebelumnya untuk tombol kembali dari leaderboard
+            screens.forEach(s => {
+                const el = document.getElementById(`screen-${s}`);
+                if (!el.classList.contains('hidden') && s !== 'leaderboard') {
+                    gameState.lastScreen = s;
+                }
+                el.classList.add('hidden');
+            });
+
+            document.getElementById(`screen-${screenName}`).classList.remove('hidden');
+
+            if (screenName === 'leaderboard') {
+                renderLeaderboard();
+            }
+        }
+
+        function backFromLeaderboard() {
+            showScreen(gameState.lastScreen || 'start');
+        }
+
+        /* ==========================================================================
+           5. PEMBUATAN PAPAN 5x5 ZIG-ZAG & VISUAL ULAR TANGGA
+           ========================================================================== */
+        // Mengembalikan koordinat baris (0..4 dari atas) dan kolom (0..4 dari kiri) untuk nomor petak 1..25
+        function getGridCoords(tileNum) {
+            const zeroIdx = tileNum - 1;
+            const rowFromBottom = Math.floor(zeroIdx / 5); // 0 (bawah) .. 4 (atas)
+            const colInRow = zeroIdx % 5; // 0 .. 4
+
+            // Zig-zag: baris genap dari bawah (0, 2, 4) jalan kiri ke kanan; baris ganjil (1, 3) kanan ke kiri
+            const col = (rowFromBottom % 2 === 0) ? colInRow : (4 - colInRow);
+            const rowFromTop = 4 - rowFromBottom;
+
+            return { row: rowFromTop, col: col };
+        }
+
+        function buildBoard() {
+            const grid = document.getElementById('board-grid');
+            grid.innerHTML = '';
+
+            // Buat array 25 sel urut tampilan DOM (baris 0..4 atas ke bawah, kolom 0..4 kiri ke kanan)
+            const cells = Array(25).fill(null);
+
+            for (let num = 1; num <= 25; num++) {
+                const { row, col } = getGridCoords(num);
+                const domIndex = row * 5 + col;
+                cells[domIndex] = num;
+            }
+
+            cells.forEach((num) => {
+                const tile = document.createElement('div');
+                const colorClass = TILE_COLORS[(num - 1) % TILE_COLORS.length];
+                const isLadder = LADDERS[num] !== undefined;
+                const isSnake = SNAKES[num] !== undefined;
+                const isStart = num === 1;
+                const isFinish = num === 25;
+
+                let specialBadge = '';
+                let extraStyle = colorClass;
+
+                if (isStart) {
+                    specialBadge = `<span class="text-[10px] sm:text-xs font-extrabold bg-emerald-500 text-white px-1.5 rounded">START</span>`;
+                } else if (isFinish) {
+                    extraStyle = "bg-gradient-to-br from-amber-300 to-yellow-400 border-amber-500 text-amber-950";
+                    specialBadge = `<span class="text-[10px] sm:text-xs font-extrabold bg-red-600 text-white px-1.5 rounded animate-pulse">FINISH</span>`;
+                } else if (isLadder) {
+                    specialBadge = `<span class="text-[10px] sm:text-xs font-bold bg-emerald-600 text-white px-1 rounded shadow-sm" title="Tangga naik ke ${LADDERS[num]}">⭐🪜↑${LADDERS[num]}</span>`;
+                } else if (isSnake) {
+                    specialBadge = `<span class="text-[10px] sm:text-xs font-bold bg-rose-600 text-white px-1 rounded shadow-sm" title="Ular turun ke ${SNAKES[num]}">⭐🐍↓${SNAKES[num]}</span>`;
+                }
+
+                tile.id = `tile-${num}`;
+                tile.className = `tile border-2 ${extraStyle}`;
+                tile.innerHTML = `
+                    <div class="flex justify-between items-start w-full">
+                        <span class="font-bold text-xs sm:text-base leading-none">${num}</span>
+                        ${specialBadge}
+                    </div>
+                    <div id="pawns-tile-${num}" class="flex items-center justify-center gap-1 min-h-[28px] sm:min-h-[34px]"></div>
+                `;
+
+                grid.appendChild(tile);
+            });
+
+            drawSnakesAndLaddersSVG();
+            renderPawns();
+        }
+
+        function drawSnakesAndLaddersSVG() {
+            const svg = document.getElementById('board-svg');
+            svg.innerHTML = '';
+
+            // Helper mendapatkan pusat koordinat dalam skala viewBox 500x500
+            const getCenter = (num) => {
+                const { row, col } = getGridCoords(num);
+                return {
+                    x: col * 100 + 50,
+                    y: row * 100 + 50
+                };
+            };
+
+            // Gambar Tangga (Garis rel hijau paralel + anak tangga)
+            Object.entries(LADDERS).forEach(([start, end]) => {
+                const p1 = getCenter(parseInt(start));
+                const p2 = getCenter(parseInt(end));
+
+                const dx = p2.x - p1.x;
+                const dy = p2.y - p1.y;
+                const len = Math.hypot(dx, dy);
+                const nx = (-dy / len) * 10; // offset tegak lurus
+                const ny = (dx / len) * 10;
+
+                // Dua rel tangga
+                const rail1 = `<line x1="${p1.x + nx}" y1="${p1.y + ny}" x2="${p2.x + nx}" y2="${p2.y + ny}" stroke="#059669" stroke-width="5" stroke-linecap="round" opacity="0.75" />`;
+                const rail2 = `<line x1="${p1.x - nx}" y1="${p1.y - ny}" x2="${p2.x - nx}" y2="${p2.y - ny}" stroke="#059669" stroke-width="5" stroke-linecap="round" opacity="0.75" />`;
+                
+                // Anak tangga
+                let rungs = '';
+                const steps = Math.floor(len / 22);
+                for (let i = 1; i < steps; i++) {
+                    const t = i / steps;
+                    const rx = p1.x + dx * t;
+                    const ry = p1.y + dy * t;
+                    rungs += `<line x1="${rx + nx}" y1="${ry + ny}" x2="${rx - nx}" y2="${ry - ny}" stroke="#10b981" stroke-width="4" stroke-linecap="round" opacity="0.85" />`;
+                }
+
+                svg.innerHTML += rail1 + rail2 + rungs;
+            });
+
+            // Gambar Ular (Kurva melengkung merah/oranye)
+            Object.entries(SNAKES).forEach(([start, end]) => {
+                const p1 = getCenter(parseInt(start)); // Kepala ular
+                const p2 = getCenter(parseInt(end));   // Ekor ular
+
+                const midX = (p1.x + p2.x) / 2;
+                const midY = (p1.y + p2.y) / 2;
+                const ctrl1X = midX + 35;
+                const ctrl1Y = (p1.y + midY) / 2;
+                const ctrl2X = midX - 35;
+                const ctrl2Y = (midY + p2.y) / 2;
+
+                const path = `<path d="M ${p1.x} ${p1.y} C ${ctrl1X} ${ctrl1Y}, ${ctrl2X} ${ctrl2Y}, ${p2.x} ${p2.y}" 
+                                fill="none" stroke="#e11d48" stroke-width="7" stroke-linecap="round" stroke-dasharray="10, 4" opacity="0.75" />`;
+                const head = `<circle cx="${p1.x}" cy="${p1.y}" r="9" fill="#be123c" opacity="0.9" />`;
+                svg.innerHTML += path + head;
+            });
+        }
+
+        function renderPawns() {
+            // Bersihkan semua pion sebelumnya
+            for (let i = 1; i <= 25; i++) {
+                const container = document.getElementById(`pawns-tile-${i}`);
+                if (container) container.innerHTML = '';
+            }
+
+            // Render P1 & P2 di posisi masing-masing
+            gameState.players.forEach((p, idx) => {
+                const container = document.getElementById(`pawns-tile-${p.pos}`);
+                if (container) {
+                    const pawn = document.createElement('div');
+                    pawn.className = `pawn ${idx === 0 ? 'pawn-p1' : 'pawn-p2'}`;
+                    pawn.textContent = `P${p.id}`;
+                    pawn.title = p.name;
+                    container.appendChild(pawn);
+                }
+            });
+        }
+
+        /* ==========================================================================
+           6. LOGIKA DADU & ALUR GILIRAN
+           ========================================================================== */
+        const DICE_PATTERNS = {
+            1: [5],
+            2: [1, 9],
+            3: [1, 5, 9],
+            4: [1, 3, 7, 9],
+            5: [1, 3, 5, 7, 9],
+            6: [1, 3, 4, 6, 7, 9]
+        };
+
+        function setDiceFace(num) {
+            for (let i = 1; i <= 9; i++) {
+                const dot = document.getElementById(`d${i}`);
+                dot.classList.remove('active', 'red-dot');
+            }
+            const activeDots = DICE_PATTERNS[num] || [5];
+            activeDots.forEach(d => {
+                const dot = document.getElementById(`d${d}`);
+                dot.classList.add('active');
+                if (num === 1 || num === 6) dot.classList.add('red-dot');
+            });
+        }
+
+        function startGame(e) {
+            e.preventDefault();
+            initAudio();
+
+            const p1Name = document.getElementById('input-p1').value.trim() || "Pemain 1";
+            const p2Name = document.getElementById('input-p2').value.trim() || "Pemain 2";
+            const teamName = document.getElementById('input-team').value.trim() || "SMP Kelas 7";
+
+            gameState = {
+                players: [
+                    { id: 1, name: p1Name, pos: 1, rolls: 0, correct: 0, color: "red" },
+                    { id: 2, name: p2Name, pos: 1, rolls: 0, correct: 0, color: "blue" }
+                ],
+                team: teamName,
+                currentTurn: 0,
+                isRolling: false,
+                isQuizOpen: false,
+                currentDice: 1,
+                usedQuestions: [],
+                soundEnabled: gameState.soundEnabled,
+                lastScreen: "game"
+            };
+
+            document.getElementById('team-badge').textContent = `🏫 ${teamName}`;
+            document.getElementById('stat-p1-name').textContent = p1Name;
+            document.getElementById('stat-p2-name').textContent = p2Name;
+
+            buildBoard();
+            updateUI();
+            showScreen('game');
+            playSound('step');
+        }
+
+        function updateUI() {
+            const p1 = gameState.players[0];
+            const p2 = gameState.players[1];
+            const activePlayer = gameState.players[gameState.currentTurn];
+
+            // Update Stats
+            document.getElementById('stat-p1-pos').textContent = p1.pos;
+            document.getElementById('stat-p1-rolls').textContent = p1.rolls;
+            document.getElementById('stat-p1-correct').textContent = p1.correct;
+
+            document.getElementById('stat-p2-pos').textContent = p2.pos;
+            document.getElementById('stat-p2-rolls').textContent = p2.rolls;
+            document.getElementById('stat-p2-correct').textContent = p2.correct;
+
+            // Update Turn Card
+            const turnCard = document.getElementById('turn-card');
+            const turnBadge = document.getElementById('turn-badge');
+            const turnAvatar = document.getElementById('turn-avatar');
+            const turnName = document.getElementById('turn-name');
+
+            turnName.textContent = activePlayer.name;
+            turnAvatar.textContent = `P${activePlayer.id}`;
+            turnBadge.textContent = `Pemain ${activePlayer.id}`;
+
+            if (gameState.currentTurn === 0) {
+                turnCard.className = "bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-xl border-4 border-red-400 transition-colors duration-300";
+                turnBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700";
+                turnAvatar.className = "w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 text-white flex items-center justify-center text-2xl font-bold shadow-md shrink-0";
+            } else {
+                turnCard.className = "bg-white/95 backdrop-blur-md p-5 rounded-3xl shadow-xl border-4 border-blue-400 transition-colors duration-300";
+                turnBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700";
+                turnAvatar.className = "w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white flex items-center justify-center text-2xl font-bold shadow-md shrink-0";
+            }
+
+            const btnRoll = document.getElementById('btn-roll');
+            btnRoll.disabled = gameState.isRolling || gameState.isQuizOpen;
+        }
+
+        function handleRollDice() {
+            if (gameState.isRolling || gameState.isQuizOpen) return;
+
+            initAudio();
+            gameState.isRolling = true;
+            updateUI();
+
+            const diceEl = document.getElementById('dice');
+            diceEl.classList.add('animate-wiggle');
+            document.getElementById('game-log').textContent = "Mengocok dadu...";
+
+            let rollCount = 0;
+            const maxRolls = 12;
+            const rollInterval = setInterval(() => {
+                const tempNum = Math.floor(Math.random() * 6) + 1;
+                setDiceFace(tempNum);
+                playSound('dice');
+                rollCount++;
+
+                if (rollCount >= maxRolls) {
+                    clearInterval(rollInterval);
+                    diceEl.classList.remove('animate-wiggle');
+
+                    const finalDice = Math.floor(Math.random() * 6) + 1;
+                    setDiceFace(finalDice);
+                    gameState.currentDice = finalDice;
+                    gameState.players[gameState.currentTurn].rolls++;
+
+                    updateUI();
+                    document.getElementById('game-log').textContent = `Dadu keluar angka ${finalDice}! Jawab soal untuk maju.`;
+
+                    setTimeout(() => {
+                        gameState.isRolling = false;
+                        openQuizModal(finalDice);
+                    }, 550);
+                }
+            }, 75);
+        }
+
+        /* ==========================================================================
+           7. SISTEM KUIS INTERAKTIF
+           ========================================================================== */
+        function getNextQuestion() {
+            if (gameState.usedQuestions.length >= QUESTION_BANK.length) {
+                gameState.usedQuestions = []; // Reset pool jika semua 30 soal sudah keluar
+            }
+            let idx;
+            do {
+                idx = Math.floor(Math.random() * QUESTION_BANK.length);
+            } while (gameState.usedQuestions.includes(idx));
+
+            gameState.usedQuestions.push(idx);
+            return QUESTION_BANK[idx];
+        }
+
+        function openQuizModal(steps) {
+            gameState.isQuizOpen = true;
+            updateUI();
+
+            const qData = getNextQuestion();
+            const activePlayer = gameState.players[gameState.currentTurn];
+
+            document.getElementById('quiz-subtitle').textContent = `${activePlayer.name}, jawab benar untuk maju ${steps} langkah!`;
+            document.getElementById('quiz-category').textContent = qData.category;
+            document.getElementById('quiz-question').textContent = qData.q;
+
+            const feedbackEl = document.getElementById('quiz-feedback');
+            feedbackEl.classList.add('hidden');
+            feedbackEl.innerHTML = '';
+
+            // Acak urutan pilihan jawaban sambil menjaga indeks jawaban benar
+            const indexedOptions = qData.options.map((text, i) => ({
+                text,
+                isCorrect: i === qData.answer
+            }));
+            indexedOptions.sort(() => Math.random() - 0.5);
+
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            const labels = ['A', 'B', 'C', 'D'];
+            indexedOptions.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-game text-left p-3.5 sm:p-4 rounded-2xl border-2 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 font-bold text-slate-700 flex items-center gap-3 transition";
+                btn.innerHTML = `
+                    <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm shrink-0">${labels[i]}</span>
+                    <span class="text-sm sm:text-base">${opt.text}</span>
+                `;
+                btn.onclick = () => handleAnswer(opt.isCorrect, btn, indexedOptions, qData.explanation);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('modal-quiz').classList.remove('hidden');
+        }
+
+        function handleAnswer(isCorrect, clickedBtn, allOptions, explanation) {
+            const buttons = document.getElementById('quiz-options').querySelectorAll('button');
+            buttons.forEach((btn, idx) => {
+                btn.disabled = true;
+                if (allOptions[idx].isCorrect) {
+                    btn.classList.remove('border-indigo-200', 'bg-indigo-50/50');
+                    btn.classList.add('border-emerald-500', 'bg-emerald-100', 'text-emerald-900');
+                }
+            });
+
+            const feedbackEl = document.getElementById('quiz-feedback');
+            feedbackEl.classList.remove('hidden');
+
+            if (isCorrect) {
+                playSound('correct');
+                gameState.players[gameState.currentTurn].correct++;
+                feedbackEl.className = "mt-5 p-4 rounded-2xl text-center font-bold text-sm sm:text-base bg-emerald-100 text-emerald-800 border-2 border-emerald-300 animate-pop";
+                feedbackEl.innerHTML = `🎉 <b>BENAR!</b> Maju ${gameState.currentDice} langkah!<br><span class="text-xs font-normal text-emerald-700">${explanation}</span>`;
+            } else {
+                playSound('wrong');
+                clickedBtn.classList.remove('border-indigo-200', 'bg-indigo-50/50');
+                clickedBtn.classList.add('border-rose-500', 'bg-rose-100', 'text-rose-900');
+                feedbackEl.className = "mt-5 p-4 rounded-2xl text-center font-bold text-sm sm:text-base bg-rose-100 text-rose-800 border-2 border-rose-300 animate-pop";
+                feedbackEl.innerHTML = `❌ <b>KURANG TEPAT!</b> Kamu tetap di tempat.<br><span class="text-xs font-normal text-rose-700">${explanation}</span>`;
+            }
+
+            setTimeout(() => {
+                document.getElementById('modal-quiz').classList.add('hidden');
+                gameState.isQuizOpen = false;
+
+                if (isCorrect) {
+                    movePlayerStepByStep(gameState.currentDice);
+                } else {
+                    document.getElementById('game-log').textContent = `${gameState.players[gameState.currentTurn].name} gagal melangkah.`;
+                    nextTurn();
+                }
+            }, 2200);
+        }
+
+        /* ==========================================================================
+           8. PERGERAKAN PION, ULAR TANGGA & PENGECEKAN MENANG
+           ========================================================================== */
+        function movePlayerStepByStep(steps) {
+            const player = gameState.players[gameState.currentTurn];
+            let remaining = steps;
+            let direction = 1; // 1 = maju, -1 = pantul jika melebihi 25
+
+            const stepInterval = setInterval(() => {
+                if (remaining > 0) {
+                    if (player.pos === 25) {
+                        direction = -1; // Pantul mundur jika langkah berlebih
+                    }
+                    player.pos += direction;
+                    remaining--;
+                    playSound('step');
+                    renderPawns();
+                    updateUI();
+                } else {
+                    clearInterval(stepInterval);
+                    checkSpecialTileAndWin();
+                }
+            }, 320);
+        }
+
+        function checkSpecialTileAndWin() {
+            const player = gameState.players[gameState.currentTurn];
+
+            // Cek Menang (Tepat di petak 25)
+            if (player.pos === 25) {
+                triggerWin(player);
+                return;
+            }
+
+            // Cek Tangga
+            if (LADDERS[player.pos]) {
+                const target = LADDERS[player.pos];
+                document.getElementById('game-log').textContent = `🪜 Hebat! ${player.name} naik tangga ke petak ${target}!`;
+                setTimeout(() => {
+                    playSound('ladder');
+                    player.pos = target;
+                    renderPawns();
+                    updateUI();
+                    if (player.pos === 25) {
+                        triggerWin(player);
+                    } else {
+                        nextTurn();
+                    }
+                }, 500);
+                return;
+            }
+
+            // Cek Ular
+            if (SNAKES[player.pos]) {
+                const target = SNAKES[player.pos];
+                document.getElementById('game-log').textContent = `🐍 Ups! ${player.name} turun ular ke petak ${target}!`;
+                setTimeout(() => {
+                    playSound('snake');
+                    player.pos = target;
+                    renderPawns();
+                    updateUI();
+                    nextTurn();
+                }, 500);
+                return;
+            }
+
+            document.getElementById('game-log').textContent = `${player.name} berada di petak ${player.pos}.`;
+            nextTurn();
+        }
+
+        function nextTurn() {
+            gameState.currentTurn = gameState.currentTurn === 0 ? 1 : 0;
+            updateUI();
+        }
+
+        function triggerWin(winner) {
+            playSound('win');
+
+            // Hitung skor: Base 1000 - (rolls * 25) + (correct * 40)
+            const calculatedScore = Math.max(100, 1000 - (winner.rolls * 25) + (winner.correct * 40));
+
+            document.getElementById('winner-name').textContent = `🎉 ${winner.name} Menang!`;
+            document.getElementById('winner-team').textContent = `🏫 ${gameState.team}`;
+            document.getElementById('go-rolls').textContent = `${winner.rolls}x`;
+            document.getElementById('go-correct').textContent = `${winner.correct} soal`;
+            document.getElementById('go-score').textContent = calculatedScore;
+
+            saveScoreToLeaderboard({
+                name: winner.name,
+                team: gameState.team,
+                rolls: winner.rolls,
+                correct: winner.correct,
+                score: calculatedScore,
+                date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+            });
+
+            showScreen('gameover');
+        }
+
+        /* ==========================================================================
+           9. LEADERBOARD (LOCALSTORAGE)
+           ========================================================================== */
+        const STORAGE_KEY = 'master_bilangan_bulat_leaderboard_v1';
+
+        function getLeaderboardData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveScoreToLeaderboard(entry) {
+            const list = getLeaderboardData();
+            list.push(entry);
+            // Urutkan berdasarkan skor tertinggi, lalu lemparan tersedikit
+            list.sort((a, b) => b.score - a.score || a.rolls - b.rolls);
+            const top20 = list.slice(0, 20);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(top20));
+        }
+
+        function renderLeaderboard() {
+            const data = getLeaderboardData();
+            const podiumEl = document.getElementById('leaderboard-podium');
+            const listEl = document.getElementById('leaderboard-list');
+
+            if (data.length === 0) {
+                podiumEl.innerHTML = `<div class="col-span-3 text-center py-6 text-slate-400 text-sm">Belum ada juara tercatat. Jadilah yang pertama menang!</div>`;
+                listEl.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">Mainkan game untuk mengisi papan peringkat.</div>`;
+                return;
+            }
+
+            // Render Top 3 Podium (Urutan visual: Juara 2 - Juara 1 - Juara 3)
+            const podiumOrder = [
+                { idx: 1, medal: '🥈', height: 'h-24', bg: 'bg-slate-200 border-slate-300', rank: '2' },
+                { idx: 0, medal: '🥇', height: 'h-32', bg: 'bg-amber-200 border-amber-400', rank: '1' },
+                { idx: 2, medal: '🥉', height: 'h-20', bg: 'bg-orange-200 border-orange-300', rank: '3' }
+            ];
+
+            podiumEl.innerHTML = '';
+            podiumOrder.forEach(slot => {
+                const item = data[slot.idx];
+                if (item) {
+                    podiumEl.innerHTML += `
+                        <div class="flex flex-col items-center text-center">
+                            <span class="text-2xl sm:text-3xl mb-1">${slot.medal}</span>
+                            <p class="font-bold text-slate-800 text-xs sm:text-sm truncate w-full px-1">${item.name}</p>
+                            <p class="text-[10px] text-slate-500 truncate w-full px-1 mb-1">${item.team}</p>
+                            <div class="w-full ${slot.height} ${slot.bg} border-2 rounded-t-2xl flex flex-col items-center justify-center shadow-inner p-1">
+                                <span class="font-extrabold text-base sm:text-lg text-slate-800">${item.score}</span>
+                                <span class="text-[10px] font-semibold text-slate-600">${item.rolls} lemparan</span>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    podiumEl.innerHTML += `
+                        <div class="flex flex-col items-center text-center opacity-40">
+                            <span class="text-2xl mb-1">${slot.medal}</span>
+                            <p class="text-xs font-bold mb-1">-</p>
+                            <div class="w-full ${slot.height} bg-slate-100 border-2 border-dashed border-slate-300 rounded-t-2xl flex items-center justify-center">
+                                <span class="text-xs font-bold text-slate-400">#${slot.rank}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            // Render List Semua Peringkat
+            listEl.innerHTML = data.map((item, idx) => `
+                <div class="flex items-center justify-between px-4 py-3 hover:bg-slate-100 transition">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-6 h-6 rounded-full ${idx < 3 ? 'bg-amber-400 text-amber-950' : 'bg-slate-200 text-slate-600'} font-bold text-xs flex items-center justify-center shrink-0">
+                            ${idx + 1}
+                        </span>
+                        <div class="truncate">
+                            <p class="font-bold text-slate-800 text-sm truncate">${item.name}</p>
+                            <p class="text-xs text-slate-500 truncate">${item.team} • ${item.date}</p>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2">
+                        <span class="font-extrabold text-indigo-600 text-sm sm:text-base block">${item.score} pts</span>
+                        <span class="text-[11px] text-slate-500">${item.rolls} lemparan (${item.correct} benar)</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearLeaderboard() {
+            localStorage.removeItem(STORAGE_KEY);
+            renderLeaderboard();
+        }
+
+        /* ==========================================================================
+           10. KONTROL RESET & MODAL KONFIRMASI
+           ========================================================================== */
+        function confirmQuitGame() {
+            document.getElementById('modal-confirm').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('modal-confirm').classList.add('hidden');
+        }
+
+        function quitGame() {
+            closeConfirmModal();
+            resetToStart();
+        }
+
+        function resetToStart() {
+            gameState.lastScreen = 'start';
+            showScreen('start');
+        }
+
+        // Inisialisasi awal
+        setDiceFace(1);
+    </script>
+</body>
+</html>
